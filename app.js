@@ -6,7 +6,7 @@ $('segment').value=Math.max(0,LIB.findIndex(s=>s.name==='Москва'));
 function calc(){
 const manual=document.querySelector('input[name=mode]:checked').value==='manual';$('libraryField').hidden=manual;$('manualField').hidden=!manual;
 const seg=LIB[n('segment')]||LIB[0],aud=manual?n('manual'):seg.size,cap=n('maxReach'),cpm=n('cpm'),step=n('step'),t1=n('t1'),t2=n('t2');
-$('source').textContent=seg.source;$('audience').textContent=fmt(aud)+' чел.';
+$('audience').textContent=fmt(aud)+' чел.';
 const valid=aud>0&&cap>0&&cap<=100&&cpm>0&&step>0&&t1>0&&t1<t2&&t2<=100&&Number.isFinite(aud*cap*cpm*step);
 $('error').textContent=valid?'':'Проверьте данные: аудитория, CPM и шаг должны быть больше нуля, Max Reach от 1 до 100%, пороги 0 < первый < второй ≤ 100%.';
 if(!valid){data=[];$('rows').innerHTML='';$('plot').innerHTML='';['active','signal','low'].forEach(k=>$(k).textContent='—');return}
@@ -31,9 +31,6 @@ for(let i=0;i<=5;i++){const v=i*20,Y=y(v);out+='<line x1="'+l+'" y1="'+Y+'" x2="
 for(let i=0;i<=4;i++){const j=i*5;out+='<text x="'+x(j)+'" y="'+(h-20)+'" text-anchor="middle" font-size="12" fill="#7a8793">'+fmt(j*step,1)+'</text>'}
 const threshold=(pct,color,label,offset)=>{
 const target=cap*pct/100;
-const budget=-Math.log1p(-pct/100)*(data.length-1>=0?1:1);
-const maxPeople=data[20].impressions?data[20].impressions/(data[20].budget/(data[20].impressions||1)):0;
-const audReach=cap;
 const crossing=data.findIndex(s=>s.reachPct>=target);
 const i=crossing<0?null:crossing;
 if(i===null)return;
