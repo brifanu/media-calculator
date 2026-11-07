@@ -18,9 +18,42 @@ $('active').textContent=active.length?million(active[active.length-1].budget):'<
 $('rows').innerHTML=data.map(s=>'<tr><td><span class="tag '+({Оптимально:'opt',Сигнал:'sig',Неэффективно:'low'}[s.zone]||'')+'">'+s.zone+'</span></td><td>'+fmt(s.budget)+'</td><td>'+fmt(s.impressions)+'</td><td>'+fmt(s.reachPct,2)+'%</td><td>'+fmt(s.reach)+'</td><td>'+fmt(s.frequency,2)+'</td><td>'+fmt(s.cpu,2)+'</td><td>'+fmt(s.delta,2)+'</td><td>'+fmt(s.costPP,2)+'</td></tr>').join('');
 draw(cap,step);
 }
-function draw(cap,step){let l=54,r=20,t=20,b=45,w=720,h=330,iw=w-l-r,ih=h-t-b,x=i=>l+i/20*iw,y=v=>t+(100-v)/100*ih,out='';
-for(let i=0;i<=5;i++){let v=i*20,Y=y(v);out+='<line x1="'+l+'" y1="'+Y+'" x2="'+(w-r)+'" y2="'+Y+'" stroke="#ede9f1"/><text x="'+(l-10)+'" y="'+(Y+4)+'" text-anchor="end" font-size="12" fill="#85818d">'+v+'%</text>'}
-for(let i=0;i<=4;i++)out+='<text x="'+x(i*5)+'" y="'+(h-18)+'" text-anchor="middle" font-size="12" fill="#85818d">'+fmt(i*5*step,1)+'</text>';
-out+='<line x1="'+l+'" y1="'+y(cap)+'" x2="'+(w-r)+'" y2="'+y(cap)+'" stroke="#aaa2b3" stroke-dasharray="6 5"/><path d="'+data.map((s,i)=>(i?'L':'M')+x(i)+','+y(s.reachPct)).join(' ')+'" stroke="#20a652" stroke-width="3" fill="none"/><text x="360" y="328" text-anchor="middle" font-size="12" fill="#85818d">Бюджет, млн ₽</text>';$('plot').innerHTML=out}
+function draw(cap,step){
+const svg=$('plot'),showDelta=$('showDelta').checked;
+$('deltaLegend').hidden=!showDelta;
+const w=720,h=350,l=54,r=showDelta?62:20,t=36,b=48,iw=w-l-r,ih=h-t-b;
+const x=i=>l+i/20*iw,y=v=>t+(100-v)/100*ih;
+const maxDelta=Math.max(0.1,...data.map(s=>s.delta));
+const deltaTop=Math.ceil(maxDelta*1.15*10)/10;
+const yd=v=>t+(1-v/deltaTop)*ih;
+let out='';
+for(let i=0;i<=5;i++){const v=i*20,Y=y(v);out+='<line x1="'+l+'" y1="'+Y+'" x2="'+(w-r)+'" y2="'+Y+'" stroke="#e6eaed"/><text x="'+(l-10)+'" y="'+(Y+4)+'" text-anchor="end" font-size="12" fill="#7a8793">'+v+'%</text>'}
+for(let i=0;i<=4;i++){const j=i*5;out+='<text x="'+x(j)+'" y="'+(h-20)+'" text-anchor="middle" font-size="12" fill="#7a8793">'+fmt(j*step,1)+'</text>'}
+const threshold=(pct,color,label,offset)=>{
+const target=cap*pct/100;
+const budget=-Math.log1p(-pct/100)*(data.length-1>=0?1:1);
+const maxPeople=data[20].impressions?data[20].impressions/(data[20].budget/(data[20].impressions||1)):0;
+const audReach=cap;
+const crossing=data.findIndex(s=>s.reachPct>=target);
+const i=crossing<0?null:crossing;
+if(i===null)return;
+const px=x(i);
+out+='<line x1="'+px+'" y1="'+t+'" x2="'+px+'" y2="'+(h-b)+'" stroke="'+color+'" stroke-width="1.5" stroke-dasharray="5 5"/>';
+const anchor=px>w-160?'end':'start',tx=px+(anchor==='end'?-7:7);
+out+='<text x="'+tx+'" y="'+(t+offset)+'" text-anchor="'+anchor+'" font-size="11" font-weight="600" fill="'+color+'">'+label+'</text>';
+out+='<circle cx="'+px+'" cy="'+y(data[i].reachPct)+'" r="4" fill="'+color+'" stroke="white" stroke-width="1.5"/>';
+};
+out+='<line x1="'+l+'" y1="'+y(cap)+'" x2="'+(w-r)+'" y2="'+y(cap)+'" stroke="#a8b6c1" stroke-dasharray="4 5"/>';
+if(showDelta){
+out+='<text x="'+(w-r+10)+'" y="'+(t-12)+'" font-size="10" fill="#246ba6">п.п.</text>';
+for(let i=0;i<=4;i++){const v=deltaTop*i/4;out+='<text x="'+(w-r+8)+'" y="'+(yd(v)+4)+'" font-size="11" fill="#246ba6">'+fmt(v,1)+'</text>'}
+out+='<path d="'+data.map((s,i)=>(i?'L':'M')+x(i)+','+yd(s.delta)).join(' ')+'" fill="none" stroke="#246ba6" stroke-width="2.5" stroke-linejoin="round"/>';
+}
+out+='<path d="'+data.map((s,i)=>(i?'L':'M')+x(i)+','+y(s.reachPct)).join(' ')+'" fill="none" stroke="#20a652" stroke-width="3" stroke-linejoin="round"/>';
+threshold(n('t1'),'#6e9abf','Начало насыщения',12);
+threshold(n('t2'),'#ff7e63','Низкая отдача',26);
+out+='<text x="'+(l+iw/2)+'" y="'+(h-2)+'" text-anchor="middle" font-size="12" fill="#7a8793">Бюджет, млн ₽</text>';
+svg.innerHTML=out;
+}
 function exportCSV(){if(!data.length)return;let rows=[['Зона','Бюджет, ₽','Показы','Reach, % ЦА','Reach, чел.','Частота','Cost per Unique, ₽','Прирост Reach, п.п.','Цена +1 п.п., млн ₽'],...data.map(s=>[s.zone,s.budget,s.impressions,s.reachPct,s.reach,s.frequency,s.cpu,s.delta,s.costPP])];let csv='\uFEFF'+rows.map(row=>row.map(v=>'"'+String(v).replace(/"/g,'""').replace(/^([0-9]+)\.([0-9]+)$/,'$1,$2')+'"').join(';')).join('\r\n');let url=URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8'})),a=document.createElement('a');a.href=url;a.download='reach-budget-scenarios.csv';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000)}
-$('reachPreset').addEventListener('change',()=>{if($('reachPreset').value){$('maxReach').value=$('reachPreset').value;calc()}});$('maxReach').addEventListener('input',()=>{if($('reachPreset').value!==$('maxReach').value)$('reachPreset').value=''});document.querySelectorAll('input,select').forEach(el=>{el.addEventListener('input',calc);el.addEventListener('change',calc)});$('export').addEventListener('click',exportCSV);$('reset').addEventListener('click',()=>{document.querySelector('input[value=library]').checked=true;$('reachPreset').value='';$('segment').value=LIB.findIndex(s=>s.name==='Москва');$('manual').value=15000;$('maxReach').value=75;$('cpm').value=300;$('step').value=1;$('t1').value=50;$('t2').value=80;calc()});calc();
+$('reachPreset').addEventListener('change',()=>{if($('reachPreset').value){$('maxReach').value=$('reachPreset').value;calc()}});$('maxReach').addEventListener('input',()=>{if($('reachPreset').value!==$('maxReach').value)$('reachPreset').value=''});$('showDelta').addEventListener('change',()=>{if(data.length)draw(n('maxReach'),n('step'))});document.querySelectorAll('input,select').forEach(el=>{el.addEventListener('input',calc);el.addEventListener('change',calc)});$('export').addEventListener('click',exportCSV);$('reset').addEventListener('click',()=>{document.querySelector('input[value=library]').checked=true;$('reachPreset').value='';$('segment').value=LIB.findIndex(s=>s.name==='Москва');$('manual').value=15000;$('maxReach').value=75;$('cpm').value=300;$('step').value=1;$('t1').value=50;$('t2').value=80;calc()});calc();
