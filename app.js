@@ -17,7 +17,7 @@ function calc(){
 const manual=document.querySelector('input[name=mode]:checked').value==='manual';$('libraryField').hidden=manual;$('manualField').hidden=!manual;
 const seg=LIB[n('segment')]||LIB[0],aud=manual?n('manual'):seg.size,cap=n('maxReach'),cpm=n('cpm'),step=budgetStep(aud,cap,cpm),t1=n('t1'),t2=n('t2');
 $('audience').textContent=fmt(aud)+' чел.';
-$('stepHint').textContent=$('step').value.trim()===''?'Авто: '+fmt(step,3)+' млн ₽ на сценарий. Можно ввести свое значение.':'Ручной шаг: '+$('step').value+' млн ₽. Очистите поле для автоматического расчета.';
+if($('stepHint'))$('stepHint').textContent=$('step').value.trim()===''?'Авто: '+fmt(step,3)+' млн ₽ на сценарий. Можно ввести свое значение.':'Ручной шаг: '+$('step').value+' млн ₽. Очистите поле для автоматического расчета.';
 const valid=aud>0&&cap>0&&cap<=100&&cpm>0&&step>0&&t1>0&&t1<t2&&t2<=100&&Number.isFinite(aud*cap*cpm*step);
 $('error').textContent=valid?'':'Проверьте данные: аудитория, CPM и шаг должны быть больше нуля, Max Reach от 1 до 100%, пороги 0 < первый < второй ≤ 100%.';
 if(!valid){data=[];$('rows').innerHTML='';$('plot').innerHTML='';['active','signal','low'].forEach(k=>$(k).textContent='—');return}
