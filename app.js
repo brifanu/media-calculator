@@ -42,14 +42,14 @@ out+='<circle cx="'+px+'" cy="'+y(data[i].reachPct)+'" r="4" fill="'+color+'" st
 };
 out+='<line x1="'+l+'" y1="'+y(cap)+'" x2="'+(w-r)+'" y2="'+y(cap)+'" stroke="#a8b6c1" stroke-dasharray="4 5"/>';
 if(showDelta){
-out+='<text x="'+(w-r+8)+'" y="'+(t-25)+'" font-size="11" font-style="italic" fill="#9aa8b4">Прирост, п.п.</text>';
+out+='<text transform="translate('+(w-12)+','+(t+ih/2)+') rotate(90)" text-anchor="middle" font-size="11" font-style="italic" fill="#9aa8b4">Прирост, п.п.</text>';
 for(let i=0;i<=4;i++){const v=deltaTop*i/4;out+='<text x="'+(w-r+8)+'" y="'+(yd(v)+4)+'" font-size="11" fill="#246ba6">'+fmt(v,1)+'</text>'}
 out+='<path d="'+data.map((s,i)=>(i?'L':'M')+x(i)+','+yd(s.delta)).join(' ')+'" fill="none" stroke="#246ba6" stroke-width="2.5" stroke-linejoin="round"/>';
 }
 out+='<path d="'+data.map((s,i)=>(i?'L':'M')+x(i)+','+y(s.reachPct)).join(' ')+'" fill="none" stroke="#20a652" stroke-width="3" stroke-linejoin="round"/>';
 threshold(n('t1'),'#6e9abf','Начало насыщения',12);
 threshold(n('t2'),'#ff7e63','Низкая отдача',26);
-out+='<text x="'+l+'" y="'+(t-25)+'" font-size="11" font-style="italic" fill="#9aa8b4">Reach, % ЦА</text>';
+out+='<text transform="translate(12,'+(t+ih/2)+') rotate(-90)" text-anchor="middle" font-size="11" font-style="italic" fill="#9aa8b4">Reach, % ЦА</text>';
 out+='<text x="'+(l+iw/2)+'" y="'+(h-2)+'" text-anchor="middle" font-size="11" font-style="italic" fill="#9aa8b4">Бюджет, млн ₽</text>';
 svg.innerHTML=out;
 const ns='http://www.w3.org/2000/svg';
