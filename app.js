@@ -15,6 +15,12 @@ data=Array.from({length:21},(_,i)=>{let budget=i*step*1e6,impressions=budget/cpm
 data.forEach((s,i)=>{s.delta=i?s.reachPct-data[i-1].reachPct:0;s.costPP=s.delta?step/s.delta:0});
 const active=data.filter(s=>s.zone==='Оптимально'),signal=data.find(s=>s.zone==='Сигнал'),low=data.find(s=>s.zone==='Неэффективно');
 $('active').textContent=active.length?million(active[active.length-1].budget):'< '+million(step*1e6);$('signal').textContent=signal?million(signal.budget):'Не достигнуто';$('low').textContent=low?million(low.budget):'Не достигнуто';
+const compactPeople=v=>v>=1e6?fmt(v/1e6,1)+' млн чел.':v>=1e3?fmt(v/1e3,1)+' тыс. чел.':fmt(v)+' чел.';
+const metrics=(id,scenario)=>{const node=$(id);if(!scenario){node.innerHTML='<span class="metric"><span>Порог не достигнут</span></span>';return}const items=[['Бюджет',fmt(scenario.budget/1e6,2)+' млн ₽'],['Reach, % ЦА',Math.round(scenario.reachPct)+'%'],['Reach, чел.',compactPeople(scenario.reach)],['Прирост Reach, п.п.',fmt(scenario.delta,1)+' п.п.']];node.innerHTML=items.map(([label,value])=>'<div class="metric"><span>'+label+'</span><b>'+value+'</b></div>').join('')};
+metrics('activeMetrics',active.length?active[active.length-1]:null);
+metrics('signalMetrics',signal);
+metrics('lowMetrics',low);
+
 $('rows').innerHTML=data.map(s=>'<tr><td><span class="tag '+({Оптимально:'opt',Сигнал:'sig',Неэффективно:'low'}[s.zone]||'')+'">'+s.zone+'</span></td><td>'+fmt(s.budget)+'</td><td>'+fmt(s.impressions)+'</td><td>'+fmt(s.reachPct,2)+'%</td><td>'+fmt(s.reach)+'</td><td>'+fmt(s.frequency,2)+'</td><td>'+fmt(s.cpu,2)+'</td><td>'+fmt(s.delta,2)+'</td><td>'+fmt(s.costPP,2)+'</td></tr>').join('');
 draw(cap,step);
 }
