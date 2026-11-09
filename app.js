@@ -21,7 +21,7 @@ draw(cap,step);
 function draw(cap,step){
 const svg=$('plot'),showDelta=$('showDelta').checked;
 $('deltaLegend').hidden=!showDelta;
-const w=720,h=350,l=54,r=showDelta?62:20,t=36,b=48,iw=w-l-r,ih=h-t-b;
+const w=720,h=350,l=54,r=showDelta?62:20,t=48,b=48,iw=w-l-r,ih=h-t-b;
 const x=i=>l+i/20*iw,y=v=>t+(100-v)/100*ih;
 const maxDelta=Math.max(0.1,...data.map(s=>s.delta));
 const deltaTop=Math.ceil(maxDelta*1.15*10)/10;
@@ -42,21 +42,22 @@ out+='<circle cx="'+px+'" cy="'+y(data[i].reachPct)+'" r="4" fill="'+color+'" st
 };
 out+='<line x1="'+l+'" y1="'+y(cap)+'" x2="'+(w-r)+'" y2="'+y(cap)+'" stroke="#a8b6c1" stroke-dasharray="4 5"/>';
 if(showDelta){
-out+='<text x="'+(w-r+10)+'" y="'+(t-12)+'" font-size="10" fill="#246ba6">п.п.</text>';
+out+='<text x="'+(w-r+8)+'" y="'+(t-25)+'" font-size="11" font-style="italic" fill="#9aa8b4">Прирост, п.п.</text>';
 for(let i=0;i<=4;i++){const v=deltaTop*i/4;out+='<text x="'+(w-r+8)+'" y="'+(yd(v)+4)+'" font-size="11" fill="#246ba6">'+fmt(v,1)+'</text>'}
 out+='<path d="'+data.map((s,i)=>(i?'L':'M')+x(i)+','+yd(s.delta)).join(' ')+'" fill="none" stroke="#246ba6" stroke-width="2.5" stroke-linejoin="round"/>';
 }
 out+='<path d="'+data.map((s,i)=>(i?'L':'M')+x(i)+','+y(s.reachPct)).join(' ')+'" fill="none" stroke="#20a652" stroke-width="3" stroke-linejoin="round"/>';
 threshold(n('t1'),'#6e9abf','Начало насыщения',12);
 threshold(n('t2'),'#ff7e63','Низкая отдача',26);
-out+='<text x="'+(l+iw/2)+'" y="'+(h-2)+'" text-anchor="middle" font-size="12" fill="#7a8793">Бюджет, млн ₽</text>';
+out+='<text x="'+l+'" y="'+(t-25)+'" font-size="11" font-style="italic" fill="#9aa8b4">Reach, % ЦА</text>';
+out+='<text x="'+(l+iw/2)+'" y="'+(h-2)+'" text-anchor="middle" font-size="11" font-style="italic" fill="#9aa8b4">Бюджет, млн ₽</text>';
 svg.innerHTML=out;
 const ns='http://www.w3.org/2000/svg';
 const hover=document.createElementNS(ns,'g');hover.setAttribute('pointer-events','none');hover.style.display='none';
 const guide=document.createElementNS(ns,'line');guide.setAttribute('stroke','#7a8793');guide.setAttribute('stroke-dasharray','3 4');guide.setAttribute('stroke-width','1');
 const reachDot=document.createElementNS(ns,'circle');reachDot.setAttribute('r','5');reachDot.setAttribute('fill','#20a652');reachDot.setAttribute('stroke','#fff');reachDot.setAttribute('stroke-width','2');
 const deltaDot=document.createElementNS(ns,'circle');deltaDot.setAttribute('r','5');deltaDot.setAttribute('fill','#246ba6');deltaDot.setAttribute('stroke','#fff');deltaDot.setAttribute('stroke-width','2');
-const card=document.createElementNS(ns,'rect');card.setAttribute('width','202');card.setAttribute('height',showDelta?'100':'78');card.setAttribute('rx','9');card.setAttribute('fill','#fff');card.setAttribute('stroke','#d2d9df');
+const card=document.createElementNS(ns,'rect');card.setAttribute('width','216');card.setAttribute('height',showDelta?'100':'78');card.setAttribute('rx','9');card.setAttribute('fill','#fff');card.setAttribute('stroke','#d2d9df');
 const lines=[0,1,2,3].map(()=>{const node=document.createElementNS(ns,'text');node.setAttribute('font-size','12');node.setAttribute('fill','#163e5c');hover.appendChild(node);return node});
 hover.append(guide,reachDot);if(showDelta)hover.appendChild(deltaDot);hover.insertBefore(card,lines[0]);svg.appendChild(hover);
 function showPoint(event){
@@ -65,7 +66,7 @@ const matrix=svg.getScreenCTM();if(!matrix)return;
 const pos=pt.matrixTransform(matrix.inverse());
 if(pos.x<l-12||pos.x>w-r+12||pos.y<t-12||pos.y>h-b+12){hover.style.display='none';return}
 const i=Math.max(0,Math.min(data.length-1,Math.round((pos.x-l)/iw*20)));
-const d=data[i],px=x(i),py=y(d.reachPct),cardW=202,cardH=showDelta?100:78;
+const d=data[i],px=x(i),py=y(d.reachPct),cardW=216,cardH=showDelta?100:78;
 const cardX=Math.min(w-cardW-4,Math.max(4,px+12+cardW>w-r?px-cardW-12:px+12));
 const cardY=Math.max(4,Math.min(h-cardH-4,py-cardH-12));
 hover.style.display='';
@@ -73,7 +74,8 @@ guide.setAttribute('x1',px);guide.setAttribute('x2',px);guide.setAttribute('y1',
 reachDot.setAttribute('cx',px);reachDot.setAttribute('cy',py);
 if(showDelta){deltaDot.setAttribute('cx',px);deltaDot.setAttribute('cy',yd(d.delta))}
 card.setAttribute('x',cardX);card.setAttribute('y',cardY);
-const captions=['Бюджет: '+fmt(d.budget/1e6,1)+' млн ₽','Reach: '+fmt(d.reachPct,2)+'% ЦА','Охвачено: '+Math.round(d.reach).toLocaleString('ru-RU')+' чел.','Прирост Reach: '+fmt(d.delta,2)+' п.п.'];
+const people=v=>v>=1e6?fmt(v/1e6,1)+' млн чел.':v>=1e3?fmt(v/1e3,1)+' тыс. чел.':Math.round(v).toLocaleString('ru-RU')+' чел.';
+const captions=['Бюджет: '+fmt(d.budget/1e6,1)+' млн ₽','Reach: '+Math.round(d.reachPct)+'% ЦА','Reach: '+people(d.reach),'Прирост Reach: '+fmt(d.delta,1)+' п.п.'];
 lines.forEach((line,j)=>{line.textContent=captions[j];line.setAttribute('x',cardX+12);line.setAttribute('y',cardY+20+j*21);line.style.display=(!showDelta&&j===3)?'none':''});
 }
 svg.onpointermove=showPoint;
