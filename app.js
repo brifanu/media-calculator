@@ -51,6 +51,34 @@ threshold(n('t1'),'#6e9abf','Начало насыщения',12);
 threshold(n('t2'),'#ff7e63','Низкая отдача',26);
 out+='<text x="'+(l+iw/2)+'" y="'+(h-2)+'" text-anchor="middle" font-size="12" fill="#7a8793">Бюджет, млн ₽</text>';
 svg.innerHTML=out;
+const ns='http://www.w3.org/2000/svg';
+const hover=document.createElementNS(ns,'g');hover.setAttribute('pointer-events','none');hover.style.display='none';
+const guide=document.createElementNS(ns,'line');guide.setAttribute('stroke','#7a8793');guide.setAttribute('stroke-dasharray','3 4');guide.setAttribute('stroke-width','1');
+const reachDot=document.createElementNS(ns,'circle');reachDot.setAttribute('r','5');reachDot.setAttribute('fill','#20a652');reachDot.setAttribute('stroke','#fff');reachDot.setAttribute('stroke-width','2');
+const deltaDot=document.createElementNS(ns,'circle');deltaDot.setAttribute('r','5');deltaDot.setAttribute('fill','#246ba6');deltaDot.setAttribute('stroke','#fff');deltaDot.setAttribute('stroke-width','2');
+const card=document.createElementNS(ns,'rect');card.setAttribute('width','202');card.setAttribute('height',showDelta?'100':'78');card.setAttribute('rx','9');card.setAttribute('fill','#fff');card.setAttribute('stroke','#d2d9df');
+const lines=[0,1,2,3].map(()=>{const node=document.createElementNS(ns,'text');node.setAttribute('font-size','12');node.setAttribute('fill','#163e5c');hover.appendChild(node);return node});
+hover.append(guide,reachDot);if(showDelta)hover.appendChild(deltaDot);hover.insertBefore(card,lines[0]);svg.appendChild(hover);
+function showPoint(event){
+const pt=svg.createSVGPoint();pt.x=event.clientX;pt.y=event.clientY;
+const matrix=svg.getScreenCTM();if(!matrix)return;
+const pos=pt.matrixTransform(matrix.inverse());
+if(pos.x<l-12||pos.x>w-r+12||pos.y<t-12||pos.y>h-b+12){hover.style.display='none';return}
+const i=Math.max(0,Math.min(data.length-1,Math.round((pos.x-l)/iw*20)));
+const d=data[i],px=x(i),py=y(d.reachPct),cardW=202,cardH=showDelta?100:78;
+const cardX=Math.min(w-cardW-4,Math.max(4,px+12+cardW>w-r?px-cardW-12:px+12));
+const cardY=Math.max(4,Math.min(h-cardH-4,py-cardH-12));
+hover.style.display='';
+guide.setAttribute('x1',px);guide.setAttribute('x2',px);guide.setAttribute('y1',t);guide.setAttribute('y2',h-b);
+reachDot.setAttribute('cx',px);reachDot.setAttribute('cy',py);
+if(showDelta){deltaDot.setAttribute('cx',px);deltaDot.setAttribute('cy',yd(d.delta))}
+card.setAttribute('x',cardX);card.setAttribute('y',cardY);
+const captions=['Бюджет: '+fmt(d.budget/1e6,1)+' млн ₽','Reach: '+fmt(d.reachPct,2)+'% ЦА','Охвачено: '+Math.round(d.reach).toLocaleString('ru-RU')+' чел.','Прирост Reach: '+fmt(d.delta,2)+' п.п.'];
+lines.forEach((line,j)=>{line.textContent=captions[j];line.setAttribute('x',cardX+12);line.setAttribute('y',cardY+20+j*21);line.style.display=(!showDelta&&j===3)?'none':''});
+}
+svg.onpointermove=showPoint;
+svg.onpointerdown=showPoint;
+svg.onpointerleave=()=>{hover.style.display='none'};
 }
 function exportCSV(){if(!data.length)return;let rows=[['Зона','Бюджет, ₽','Показы','Reach, % ЦА','Reach, чел.','Частота','Cost per Unique, ₽','Прирост Reach, п.п.','Цена +1 п.п., млн ₽'],...data.map(s=>[s.zone,s.budget,s.impressions,s.reachPct,s.reach,s.frequency,s.cpu,s.delta,s.costPP])];let csv='\uFEFF'+rows.map(row=>row.map(v=>'"'+String(v).replace(/"/g,'""').replace(/^([0-9]+)\.([0-9]+)$/,'$1,$2')+'"').join(';')).join('\r\n');let url=URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8'})),a=document.createElement('a');a.href=url;a.download='reach-budget-scenarios.csv';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000)}
 const presetDescriptions={'67.5':'Ограниченный · одна площадка, узкий инвентарь','80':'Средний · несколько площадок и форматов','85':'Высокий · широкий digital-сплит','93':'Максимальный · digital и массовые офлайн-каналы'};
