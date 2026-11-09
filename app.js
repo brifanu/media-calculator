@@ -11,13 +11,53 @@ return [1,2,2.5,5,10].map(v=>v*magnitude).find(v=>v>=raw)||10*magnitude;
 }
 function budgetStep(aud,cap,cpm){const raw=$('step').value.trim().replace(',','.');return raw===''?autoStep(aud,cap,cpm):Number(raw)}
 
-LIB.forEach((s,i)=>{let o=document.createElement('option');o.value=i;o.textContent=s.name+' · '+fmt(s.size)+' чел.';$('segment').append(o)});
-$('segment').value=Math.max(0,LIB.findIndex(s=>s.name==='Москва'));
+const districtNames=['ЦФО','СЗФО','ЮФО','СКФО','ПФО','УФО','СФО','ДФО'];
+const districtIndexes=districtNames.map(name=>LIB.findIndex(s=>s.name===name));
+const specialParents={
+'Ненецкий автономный округ':'Архангельская область',
+'Архангельская область без Ненецкого автономного округа':'Архангельская область',
+'Ханты-Мансийский автономный округ-Югра':'Тюменская область',
+'Ямало-Ненецкий автономный округ':'Тюменская область',
+'Тюменская область без автономных округов':'Тюменская область'
+};
+const specialGroups=[
+['Архангельская область','Ненецкий автономный округ','Архангельская область без Ненецкого автономного округа'],
+['Тюменская область','Ханты-Мансийский автономный округ-Югра','Ямало-Ненецкий автономный округ','Тюменская область без автономных округов']
+];
+const selectedSegments=new Set([LIB.findIndex(s=>s.name==='Москва')]);
+const districtOf=i=>{const k=districtIndexes.findIndex((start,j)=>i>=start&&(j===districtIndexes.length-1||i<districtIndexes[j+1]));return k<0?null:districtNames[k]};
+function overlap(i,j){
+if(i===j)return true;
+const a=LIB[i].name,b=LIB[j].name;
+if(a==='РФ'||b==='РФ')return true;
+const da=districtOf(i),db=districtOf(j);
+if(a===db||b===da)return true;
+if(specialGroups.some(group=>group.includes(a)&&group.includes(b)&& (a===group[0]||b===group[0])))return true;
+return false;
+}
+const totalAudience=()=>Array.from(selectedSegments).reduce((sum,i)=>sum+LIB[i].size,0);
+function renderSegments(){
+$('audienceTags').replaceChildren();
+Array.from(selectedSegments).forEach(i=>{const tag=document.createElement('span');tag.className='audience-tag';tag.append(document.createTextNode(LIB[i].name));const del=document.createElement('button');del.type='button';del.textContent='×';del.setAttribute('aria-label','Удалить '+LIB[i].name);del.addEventListener('click',()=>{selectedSegments.delete(i);$('audienceNotice').textContent='';renderSegments();calc()});tag.append(del);$('audienceTags').append(tag)});
+$('audienceTotal').textContent='Суммарная аудитория: '+fmt(totalAudience())+' чел.';
+const q=$('segmentSearch').value.trim().toLocaleLowerCase('ru-RU'),options=$('segmentOptions');options.replaceChildren();
+const matches=LIB.map((seg,i)=>({...seg,i})).filter(seg=>!q||seg.name.toLocaleLowerCase('ru-RU').includes(q)).slice(0,80);
+matches.forEach(seg=>{const button=document.createElement('button');button.type='button';button.className='audience-option';const conflict=Array.from(selectedSegments).find(i=>overlap(i,seg.i));const chosen=selectedSegments.has(seg.i);button.disabled=chosen||conflict!==undefined;const title=document.createElement('span');title.textContent=(chosen?'✓ ':'')+seg.name;const size=document.createElement('small');size.textContent=fmt(seg.size)+' чел.';button.append(title,size);if(chosen)button.title='Уже выбрано';else if(conflict!==undefined)button.title='Пересекается с '+LIB[conflict].name;button.addEventListener('click',()=>{selectedSegments.add(seg.i);$('segmentSearch').value='';$('audienceNotice').textContent='';renderSegments();calc();$('segmentSearch').focus()});options.append(button)});
+if(!matches.length)options.textContent='Ничего не найдено';
+}
+function toggleSegmentMenu(open){$('segmentOptions').hidden=!open;$('segmentSearch').setAttribute('aria-expanded',String(open));if(open)renderSegments()}
+$('segmentSearch').addEventListener('focus',()=>toggleSegmentMenu(true));
+$('segmentSearch').addEventListener('input',()=>toggleSegmentMenu(true));
+$('segmentToggle').addEventListener('click',()=>{const open=$('segmentOptions').hidden;toggleSegmentMenu(open);if(open)$('segmentSearch').focus()});
+document.addEventListener('click',e=>{if(!e.target.closest('#audiencePicker'))toggleSegmentMenu(false)});
+document.addEventListener('keydown',e=>{if(e.key==='Escape')toggleSegmentMenu(false)});
+renderSegments();
 function calc(){
 const manual=document.querySelector('input[name=mode]:checked').value==='manual';$('libraryField').hidden=manual;$('manualField').hidden=!manual;
-const seg=LIB[n('segment')]||LIB[0],aud=manual?n('manual'):seg.size,cap=n('maxReach'),cpm=n('cpm'),step=budgetStep(aud,cap,cpm),t1=n('t1'),t2=n('t2');
+const aud=manual?n('manual'):totalAudience(),cap=n('maxReach'),cpm=n('cpm'),step=budgetStep(aud,cap,cpm),t1=n('t1'),t2=n('t2');
 $('audience').textContent=fmt(aud)+' чел.';
 if($('stepHint'))$('stepHint').textContent=$('step').value.trim()===''?'Авто: '+fmt(step,3)+' млн ₽ на сценарий. Можно ввести свое значение.':'Ручной шаг: '+$('step').value+' млн ₽. Очистите поле для автоматического расчета.';
+if(!manual&&selectedSegments.size===0)$('audienceNotice').textContent='Выберите хотя бы одну территорию.';else if(!manual)$('audienceNotice').textContent='';
 const valid=aud>0&&cap>0&&cap<=100&&cpm>0&&step>0&&t1>0&&t1<t2&&t2<=100&&Number.isFinite(aud*cap*cpm*step);
 $('error').textContent=valid?'':'Проверьте данные: аудитория, CPM и шаг должны быть больше нуля, Max Reach от 1 до 100%, пороги 0 < первый < второй ≤ 100%.';
 if(!valid){data=[];$('rows').innerHTML='';$('plot').innerHTML='';['active','signal','low'].forEach(k=>$(k).textContent='—');return}
@@ -107,4 +147,4 @@ document.querySelectorAll('[data-reach]').forEach(btn=>btn.addEventListener('cli
 $('maxReach').addEventListener('input',()=>{$('presetDescription').textContent='Свое значение'});
 document.addEventListener('click',e=>{if(!e.target.closest('.reach-control')){$('presetMenu').hidden=true;$('presetToggle').setAttribute('aria-expanded','false')}});
 document.addEventListener('keydown',e=>{if(e.key==='Escape'){$('presetMenu').hidden=true;$('presetToggle').setAttribute('aria-expanded','false')}});
-$('showDelta').addEventListener('change',()=>{if(data.length)draw(n('maxReach'),budgetStep(document.querySelector('input[name=mode]:checked').value==='manual'?n('manual'):(LIB[n('segment')]||LIB[0]).size,n('maxReach'),n('cpm')))});document.querySelectorAll('input,select').forEach(el=>{el.addEventListener('input',calc);el.addEventListener('change',calc)});$('export').addEventListener('click',exportCSV);$('reset').addEventListener('click',()=>{document.querySelector('input[value=library]').checked=true;$('presetDescription').textContent='Свое значение';$('presetMenu').hidden=true;$('presetToggle').setAttribute('aria-expanded','false');$('segment').value=LIB.findIndex(s=>s.name==='Москва');$('manual').value=15000;$('maxReach').value=75;$('cpm').value=300;$('step').value='';$('t1').value=50;$('t2').value=80;calc()});calc();
+$('showDelta').addEventListener('change',()=>{if(data.length)draw(n('maxReach'),budgetStep(document.querySelector('input[name=mode]:checked').value==='manual'?n('manual'):totalAudience(),n('maxReach'),n('cpm')))});document.querySelectorAll('input,select').forEach(el=>{el.addEventListener('input',calc);el.addEventListener('change',calc)});$('export').addEventListener('click',exportCSV);$('reset').addEventListener('click',()=>{document.querySelector('input[value=library]').checked=true;$('presetDescription').textContent='Свое значение';$('presetMenu').hidden=true;$('presetToggle').setAttribute('aria-expanded','false');selectedSegments.clear();selectedSegments.add(LIB.findIndex(s=>s.name==='Москва'));$('segmentSearch').value='';renderSegments();toggleSegmentMenu(false);$('manual').value=15000;$('maxReach').value=75;$('cpm').value=300;$('step').value='';$('t1').value=50;$('t2').value=80;calc()});calc();
